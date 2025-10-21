@@ -1,3 +1,4 @@
+```
 |-- Data_Input/
 |   |-- scan_01.jpg
 |   `-- (các ảnh quét khác...)
@@ -20,3 +21,4 @@
 |-- main.py                  # Tệp chính để chạy toàn bộ pipeline
 |-- requirements.txt         # Danh sách các thư viện cần thiết
 `-- setup.sh                 # (Tùy chọn) Script cài đặt môi trường
+```
