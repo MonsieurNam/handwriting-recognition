@@ -1,0 +1,12 @@
+# requirements.txt
+
+opencv-python-headless
+numpy
+"transformers[torch]"
+sentencepiece
+accelerate
+vietocr
+easyocr
+pyvi
+gradio
+Pillow
