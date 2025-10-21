@@ -1,4 +1,5 @@
 # app/models/trocr_vn.py
+from typing import Tuple
 import torch
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 from PIL import Image

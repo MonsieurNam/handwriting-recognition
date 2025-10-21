@@ -1,4 +1,5 @@
 # app/models/crnn_viet.py
+from typing import Tuple
 from vietocr.tool.predictor import Predictor
 from vietocr.tool.config import Cfg
 from PIL import Image

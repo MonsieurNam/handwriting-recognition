@@ -1,4 +1,5 @@
 # app/processing.py - UPDATED
+from app.utils import is_checkbox_ticked
 from .ocr_ensemble import ocr_ensemble
 from .preprocessing import advanced_preprocessor
 

@@ -1,4 +1,6 @@
 # app/models/vit5_ocr.py
+from typing import Tuple
+import cv2
 import torch
 from transformers import ViTImageProcessor, ViTModel, GPT2LMHeadModel, GPT2Tokenizer
 from PIL import Image
