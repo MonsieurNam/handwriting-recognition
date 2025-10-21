@@ -3,9 +3,24 @@
 import cv2
 import numpy as np
 from PIL import Image
+from app.config import PREPROCESSING_CONFIG
 from pyvi import ViTokenizer
 from .utils import is_checkbox_ticked
+from .preprocessing import advanced_preprocessor
 
+def _preprocess_roi_for_ocr(roi_image, field_name):
+    """UPDATED: Use advanced pipeline"""
+    if PREPROCESSING_CONFIG['barcode_detection']:
+        return advanced_preprocessor.process_roi(roi_image, field_name)
+    else:
+        # Fallback to old method
+        gray = cv2.cvtColor(roi_image, cv2.COLOR_BGR2GRAY)
+        kernel = np.ones((2, 2), np.uint8)
+        dilated = cv2.dilate(gray, kernel, iterations=1)
+        sharpen_kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+        sharpened = cv2.filter2D(dilated, -1, sharpen_kernel)
+        return cv2.cvtColor(sharpened, cv2.COLOR_GRAY2BGR)
+    
 def _preprocess_roi_for_ocr(roi_image):
     """Hàm nội bộ: Áp dụng các bộ lọc để làm rõ chữ viết tay."""
     gray = cv2.cvtColor(roi_image, cv2.COLOR_BGR2GRAY)

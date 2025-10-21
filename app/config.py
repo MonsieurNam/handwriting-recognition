@@ -25,11 +25,20 @@ def load_roi_config():
     except json.JSONDecodeError:
         print(f"LỖI: File cấu hình ROI không phải là file JSON hợp lệ: {ROI_CONFIG_PATH}")
         return None
+    
+# Preprocessing configs
+PREPROCESSING_CONFIG = {
+    'barcode_detection': True,
+    'deskew_enabled': True,
+    'adaptive_threshold': True,
+    'morphological_cleanup': True,
+    'handwriting_sharpen': True
+}
 
-# Tạo các thư mục cần thiết nếu chúng chưa tồn tại
 def create_directories():
-    """Tạo tất cả các thư mục cần thiết cho dự án."""
+    """Existing code + preprocessing logs"""
     os.makedirs(INPUT_PATH, exist_ok=True)
     os.makedirs(TEMPLATE_PATH, exist_ok=True)
     os.makedirs(OUTPUT_PATH, exist_ok=True)
-    print("Các thư mục dự án đã được kiểm tra/tạo.")
+    os.makedirs(os.path.join(OUTPUT_PATH, 'preprocessed'), exist_ok=True)  # Save debug images
+    print("✅ Các thư mục dự án đã được tạo.")
