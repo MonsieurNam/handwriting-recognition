@@ -126,12 +126,12 @@ def run_ocr_pipeline(aligned_image, roi_config, ocr_engines):
                 preprocessed_roi = _preprocess_roi_for_ocr(roi_cv2)
                 
                 recognized_text = ""
-                if ocr_engines.vietocr_engine: # Giữ nguyên engine OCR hiện tại để thử nghiệm
+                if ocr_engines.vi_trocr_engine: # Giữ nguyên engine OCR hiện tại để thử nghiệm
                     try:
                         roi_pil = Image.fromarray(cv2.cvtColor(preprocessed_roi, cv2.COLOR_BGR2RGB))
-                        recognized_text = ocr_engines.vietocr_engine.predict(roi_pil)
+                        recognized_text = ocr_engines.vi_trocr_engine.predict(roi_pil)
                     except Exception as e:
-                        print(f"LỖI OCR VietOCR tại trường '{field_name}': {e}")
+                        print(f"LỖI OCR tại trường '{field_name}': {e}")
                 
                 # --- THAY ĐỔI: Gọi hàm điều phối hậu xử lý mới ---
                 processed_text = _post_process_text(field_name, recognized_text)

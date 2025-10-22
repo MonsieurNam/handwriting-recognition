@@ -13,8 +13,6 @@ class OCREngines:
         
         self.vietocr_engine = self._initialize_vietocr()
         self.easyocr_engine = self._initialize_easyocr()
-        # Thêm các engine TrOCR nếu cần
-        self.trocr_engine, self.trocr_processor = self._initialize_trocr("nguyenvulebinh/trocr-base-vietnamese-handwritten")
         self.vi_trocr_engine, self.vi_trocr_processor = self._initialize_trocr("duyle2408/trocr-vietnamese-handwriting")
 
     def _initialize_vietocr(self):
