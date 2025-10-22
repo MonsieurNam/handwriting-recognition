@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 import re
 import os
-from thefuzz import fuzz # Import thư viện để so sánh độ tương đồng chuỗi
+# from thefuzz import fuzz # Không cần thiết nữa
 
 from .utils import is_checkbox_ticked
 from .config import OUTPUT_PATH
@@ -31,32 +31,12 @@ def _advanced_preprocess_for_ocr(roi_image):
     return cv2.cvtColor(final_thresh, cv2.COLOR_GRAY2BGR)
 
 # ==============================================================================
-# === BƯỚC 2: HÀM ENSEMBLE "BỎ PHIẾU" ĐỂ CHỌN KẾT QUẢ TỐT NHẤT ===
+# === BƯỚC 2: HÀM ENSEMBLE "BỎ PHIẾU" (ĐÃ BỊ LOẠI BỎ) ===
 # ==============================================================================
 
-def _get_best_result_from_votes(predictions):
-    """
-    Chọn ra kết quả tốt nhất từ một danh sách các dự đoán của nhiều model.
-    Logic: Kết quả nào có độ tương đồng trung bình cao nhất với tất cả các kết quả khác
-    sẽ được coi là kết quả "đồng thuận" và được chọn.
-    """
-    # Lọc bỏ các kết quả rỗng hoặc chỉ có khoảng trắng
-    predictions = [p.strip() for p in predictions if p and p.strip()]
-
-    if not predictions:
-        return ""
-    if len(predictions) == 1:
-        return predictions[0]
-
-    scores = {}
-    for p1 in predictions:
-        # Tính tổng điểm tương đồng của p1 với tất cả các dự đoán khác
-        total_score = sum(fuzz.ratio(p1, p2) for p2 in predictions)
-        # Lưu trữ điểm, nếu đã có thì cộng thêm để xử lý trường hợp các model ra kết quả y hệt
-        scores[p1] = scores.get(p1, 0) + total_score
-    
-    # Trả về dự đoán có tổng điểm cao nhất
-    return max(scores, key=scores.get)
+# def _get_best_result_from_votes(predictions):
+#     """Không cần thiết nữa vì chỉ sử dụng 1 model."""
+#     pass
 
 # ==============================================================================
 # === BƯỚC 3: CÁC HÀM HẬU XỬ LÝ (GIỮ NGUYÊN) ===
@@ -73,12 +53,20 @@ def _post_process_text(field_name, text):
     return processed_text
     
 # ==============================================================================
-# === BƯỚC 4: PIPELINE CHÍNH VỚI LOGIC ENSEMBLE ===
+# === BƯỚC 4: PIPELINE CHÍNH VỚI CHỈ VINTERN-1B ===
 # ==============================================================================
 
 def run_ocr_pipeline(aligned_image, roi_config, ocr_engines):
     print("\n--- Bắt đầu Pipeline Trích xuất Thông tin ---")
     final_results = {}
+    
+    # Lấy engine Vintern-1B ra ngoài vòng lặp
+    vintern_engine = ocr_engines.engines.get('vintern_1b')
+    if not vintern_engine:
+        print("LỖI: Không tìm thấy engine 'vintern_1b'. Dừng pipeline.")
+        return {}
+        
+    model, processor = vintern_engine
     
     for field_name, data in roi_config.items():
         try:
@@ -95,52 +83,56 @@ def run_ocr_pipeline(aligned_image, roi_config, ocr_engines):
                 cv2.imwrite(os.path.join(OUTPUT_PATH, f"DEBUG_{field_name}_processed.png"), preprocessed_roi)
                 roi_pil = Image.fromarray(preprocessed_roi)
                 
-                all_predictions = []
+                print(f"\n>>> Đang xử lý trường '{field_name}' với Vintern-1B...")
 
-                # --- CHẠY DỰ ĐOÁN TRÊN TẤT CẢ CÁC ENGINE HIỆN CÓ ---
-                print(f"\n>>> Đang xử lý trường '{field_name}' với tất cả các model...")
+                # --- CHẠY DỰ ĐOÁN VỚI VINTERN-1B ---
+                text = ""
+                try:
+                    # Tạo chat prompt cho tác vụ OCR
+                    # Sử dụng tiếng Việt để prompt
+                    messages = [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "image"},
+                                {"type": "text", "text": "Vui lòng đọc chính xác tất cả văn bản trong ảnh này."}
+                            ]
+                        }
+                    ]
+                    
+                    # Chuẩn bị input
+                    prompt = processor.apply_chat_template(messages, add_generation_prompt=True)
+                    inputs = processor(text=prompt, images=roi_pil, return_tensors="pt").to(ocr_engines.device)
+                    
+                    # Generate
+                    generated_ids = model.generate(
+                        input_ids=inputs["input_ids"],
+                        pixel_values=inputs["pixel_values"],
+                        max_new_tokens=256, # Tăng token cho các trường dài
+                        do_sample=False,
+                        num_beams=3
+                    )
+                    
+                    # Decode
+                    generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+                    
+                    # Hậu xử lý: Tách phần trả lời của assistant
+                    # Output sẽ có dạng: "...<|im_start|>assistant\n[NỘI DUNG OCR]<|im_end|>"
+                    parts = generated_text.split("<|im_start|>assistant\n")
+                    if len(parts) > 1:
+                        text = parts[-1].replace("<|im_end|>", "").strip()
+                    else:
+                        text = generated_text.strip() # Fallback
 
-                # 1. VietOCR
-                if 'vietocr' in ocr_engines.engines:
-                    try:
-                        text = ocr_engines.engines['vietocr'].predict(roi_pil)
-                        all_predictions.append(text)
-                        print(f"  - VietOCR Result: '{text}'")
-                    except Exception as e:
-                        print(f"  - Lỗi VietOCR: {e}")
-
-                # 2. TrOCR Handwritten
-                if 'trocr_handwritten' in ocr_engines.engines:
-                    try:
-                        model, processor = ocr_engines.engines['trocr_handwritten']
-                        pixel_values = processor(images=roi_pil, return_tensors="pt").pixel_values.to(ocr_engines.device)
-                        generated_ids = model.generate(pixel_values, max_length=64)
-                        text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                        all_predictions.append(text)
-                        print(f"  - TrOCR-Handwritten Result: '{text}'")
-                    except Exception as e:
-                        print(f"  - Lỗi TrOCR-Handwritten: {e}")
-
-                # 3. TrOCR General
-                if 'trocr_general' in ocr_engines.engines:
-                    try:
-                        model, processor = ocr_engines.engines['trocr_general']
-                        pixel_values = processor(images=roi_pil, return_tensors="pt").pixel_values.to(ocr_engines.device)
-                        generated_ids = model.generate(pixel_values, max_length=64)
-                        text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                        all_predictions.append(text)
-                        print(f"  - TrOCR-General Result: '{text}'")
-                    except Exception as e:
-                        print(f"  - Lỗi TrOCR-General: {e}")
+                    print(f"  - Vintern-1B Result: '{text}'")
                 
-                # --- TỔNG HỢP KẾT QUẢ TỐT NHẤT ---
-                best_text = _get_best_result_from_votes(all_predictions)
-                print(f"  -> Kết quả đồng thuận (Best Vote): '{best_text}'")
+                except Exception as e:
+                    print(f"  - Lỗi Vintern-1B: {e}")
 
-                # Áp dụng hậu xử lý trên kết quả tốt nhất
-                processed_text = _post_process_text(field_name, best_text)
+                # --- Áp dụng hậu xử lý ---
+                processed_text = _post_process_text(field_name, text)
                 final_results[field_name] = processed_text
-                print(f"  => KẾT QUẢ CUỐI CÙNG cho '{field_name}': '{processed_text}' (Votes: {all_predictions})")
+                print(f"  => KẾT QUẢ CUỐI CÙNG cho '{field_name}': '{processed_text}'")
 
         except Exception as e:
             print(f"LỖI KHÔNG XÁC ĐỊNH khi xử lý trường '{field_name}': {e}")
