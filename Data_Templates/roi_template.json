@@ -5,7 +5,8 @@
         "y": 492,
         "w": 1312,
         "h": 82,
-        "type": "handwritten_name"
+        "type": "handwritten_name",
+        "question": "Họ và tên của học sinh là gì?"
     },
     "ngay_sinh": {
         "name": "Ngày tháng năm sinh",
@@ -13,7 +14,8 @@
         "y": 565,
         "w": 579,
         "h": 59,
-        "type": "handwritten_date"
+        "type": "handwritten_date",
+        "question": "Ngày tháng năm sinh của học sinh là gì?"
     },
     "lop": {
         "name": "Lớp",
@@ -21,7 +23,8 @@
         "y": 630,
         "w": 1399,
         "h": 74,
-        "type": "handwritten_text"
+        "type": "handwritten_text",
+        "question": "Học sinh đang học lớp nào?"
     },
     "checkbox_nu": {
         "name": "Checkbox Giới tính Nữ",
@@ -29,7 +32,8 @@
         "y": 586,
         "w": 40,
         "h": 40,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Nữ' có được đánh dấu chọn không?"
     },
     "checkbox_nam": {
         "name": "Checkbox Giới tính Nam",
@@ -37,7 +41,8 @@
         "y": 586,
         "w": 40,
         "h": 40,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Nam' có được đánh dấu chọn không?"
     },
     "checkbox_dieutri_khong": {
         "name": "Checkbox điều trị kiểm soát cận thị - không",
@@ -45,7 +50,8 @@
         "y": 762,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Không' trong mục điều trị kiểm soát cận thị có được đánh dấu không?"
     },
     "checkbox_dieutri_atropine": {
         "name": "Checkbox điều trị kiểm soát cận thị - Atropine",
@@ -53,7 +59,8 @@
         "y": 762,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Atropine' trong mục điều trị có được đánh dấu không?"
     },
     "checkbox_dieutri_kinh": {
         "name": "Checkbox điều trị kiểm soát cận thị - kính gọng KSCT",
@@ -61,7 +68,8 @@
         "y": 762,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Kính gọng KSCT' trong mục điều trị có được đánh dấu không?"
     },
     "checkbox_dieutri_othorK": {
         "name": "Checkbox điều trị kiểm soát cận thị - othorK",
@@ -69,7 +77,8 @@
         "y": 762,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Othor-K' trong mục điều trị có được đánh dấu không?"
     },
     "checkbox_dieutri_asdo": {
         "name": "Checkbox điều trị kiểm soát cận thị - ánh sáng đỏ",
@@ -77,7 +86,8 @@
         "y": 762,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Ánh sáng đỏ' trong mục điều trị có được đánh dấu không?"
     },
     "checkbox_ktrakinh_trayxuoc": {
         "name": "Checkbox kiểm tra kính đang đeo - mắt trầy xước",
@@ -85,15 +95,17 @@
         "y": 887,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Mắt kính trầy xước' có được đánh dấu không?"
     },
     "checkbox_ktrakinh_saitamkinh": {
-        "name": "Checkbox kiểm tra kính đang đeo -  sai tâm kính",
+        "name": "Checkbox kiểm tra kính đang đeo - sai tâm kính",
         "x": 1658,
         "y": 891,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Sai tâm kính' có được đánh dấu không?"
     },
     "checkbox_ktrakinh_congvenh": {
         "name": "Checkbox kiểm tra kính đang đeo - gọng cong vênh",
@@ -101,7 +113,8 @@
         "y": 892,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Gọng kính cong vênh' có được đánh dấu không?"
     },
     "checkbox_deokinh_co": {
         "name": "Checkbox kiểm tra có đang đeo kính - có",
@@ -109,7 +122,8 @@
         "y": 1016,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Có' trong mục đang đeo kính có được đánh dấu không?"
     },
     "checkbox_deokinh_khong": {
         "name": "Checkbox kiểm tra có đang đeo kính - không",
@@ -117,7 +131,8 @@
         "y": 1016,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Không' trong mục đang đeo kính có được đánh dấu không?"
     },
     "thi_luc_khong_kinh_phai": {
         "name": "Thị lực không kính - Mắt Phải",
@@ -125,7 +140,8 @@
         "y": 1075,
         "w": 106,
         "h": 46,
-        "type": "handwritten_number"
+        "type": "handwritten_number",
+        "question": "Thị lực không kính của mắt phải là bao nhiêu?"
     },
     "thi_luc_khong_kinh_trai": {
         "name": "Thị lực không kính - Mắt Trái",
@@ -133,31 +149,35 @@
         "y": 1078,
         "w": 108,
         "h": 46,
-        "type": "handwritten_number"
+        "type": "handwritten_number",
+        "question": "Thị lực không kính của mắt trái là bao nhiêu?"
     },
     "thi_luc_co_kinh_phai": {
-        "name": "Thị lực không kính - Mắt Phải",
+        "name": "Thị lực có kính - Mắt Phải",
         "x": 1004,
         "y": 1151,
         "w": 120,
         "h": 46,
-        "type": "handwritten_number"
+        "type": "handwritten_number",
+        "question": "Thị lực có kính của mắt phải là bao nhiêu?"
     },
     "thi_luc_co_kinh_trai": {
-        "name": "Thị lực không kính - Mắt Trái",
+        "name": "Thị lực có kính - Mắt Trái",
         "x": 1557,
         "y": 1147,
         "w": 132,
         "h": 54,
-        "type": "handwritten_number"
+        "type": "handwritten_number",
+        "question": "Thị lực có kính của mắt trái là bao nhiêu?"
     },
     "checkbox_nhinxa_dat": {
-        "name": "Checkbox kiểm tra thị lực nhìn xa -  đạt",
+        "name": "Checkbox kiểm tra thị lực nhìn xa - đạt",
         "x": 1168,
         "y": 1223,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Đạt' trong mục kiểm tra thị lực nhìn xa có được đánh dấu không?"
     },
     "checkbox_nhinxa_khongdat": {
         "name": "Checkbox kiểm tra thị lực nhìn xa - không đạt",
@@ -165,23 +185,26 @@
         "y": 1224,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Không đạt' trong mục kiểm tra thị lực nhìn xa có được đánh dấu không?"
     },
     "checkbox_nhingan_dat": {
-        "name": "Checkbox kiểm tra thị lực nhìn gần 2 mắt (4-9 tuổi) -  đạt",
+        "name": "Checkbox kiểm tra thị lực nhìn gần 2 mắt - đạt",
         "x": 1168,
         "y": 1334,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Đạt' trong mục kiểm tra thị lực nhìn gần có được đánh dấu không?"
     },
     "checkbox_nhingan_khongdat": {
-        "name": "Checkbox kiểm tra thị lực nhìn gần 2 mắt (4-9 tuổi) - không đạt",
+        "name": "Checkbox kiểm tra thị lực nhìn gần 2 mắt - không đạt",
         "x": 1635,
         "y": 1335,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Không đạt' trong mục kiểm tra thị lực nhìn gần có được đánh dấu không?"
     },
     "checkbox_ketquatthiluc_dat": {
         "name": "Checkbox kết quả kiểm tra thị lực - đạt",
@@ -189,7 +212,8 @@
         "y": 1399,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Đạt' trong mục kết quả kiểm tra thị lực có được đánh dấu không?"
     },
     "checkbox_ketquatthiluc_khongdat": {
         "name": "Checkbox kết quả kiểm tra thị lực - không đạt",
@@ -197,7 +221,8 @@
         "y": 1399,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Không đạt' trong mục kết quả kiểm tra thị lực có được đánh dấu không?"
     },
     "checkbox_kiemtrasacgiac_dat": {
         "name": "Checkbox kiểm tra sắc giác - Đạt",
@@ -205,7 +230,8 @@
         "y": 1517,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Đạt' trong mục kiểm tra sắc giác có được đánh dấu không?"
     },
     "checkbox_kiemtrasacgiac_khongdat": {
         "name": "Checkbox kiểm tra sắc giác - Không đạt",
@@ -213,7 +239,8 @@
         "y": 1519,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Không đạt' trong mục kiểm tra sắc giác có được đánh dấu không?"
     },
     "checkbox_ketluansobo_itnguyco": {
         "name": "Checkbox kết luận sơ bộ - A. Hai mắt chính thị hoặc ít nguy cơ",
@@ -221,15 +248,17 @@
         "y": 1647,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'A. Hai mắt chính thị hoặc ít nguy cơ' có được đánh dấu không?"
     },
     "checkbox_ketluansobo_nghingo": {
-        "name": "Checkbox kết luận sơ bộ - B. Nghi ngờ có tật khúc xạ/bệnh lý mắt, cần khám để chuẩn đoán xác định",
+        "name": "Checkbox kết luận sơ bộ - B. Nghi ngờ có tật khúc xạ/bệnh lý mắt",
         "x": 475,
         "y": 1699,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'B. Nghi ngờ có tật khúc xạ' có được đánh dấu không?"
     },
     "checkbox_ketluansobo_cotatkhucxa_kinhphuhop": {
         "name": "Checkbox kết luận sơ bộ - C. Có tật khúc xạ, kính đang đeo phù hợp",
@@ -237,15 +266,17 @@
         "y": 1750,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'C. Có tật khúc xạ, kính đang đeo phù hợp' có được đánh dấu không?"
     },
     "checkbox_ketluansobo_cotatkhucxa_kinhchuaphuhop": {
-        "name": "Checkbox kết luận sơ bộ - D. Có tật khúc xạ, kính chưa tối ưu, cần kiểm tra lại kính đang đeo",
+        "name": "Checkbox kết luận sơ bộ - D. Có tật khúc xạ, kính chưa tối ưu",
         "x": 475,
         "y": 1801,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'D. Có tật khúc xạ, kính chưa tối ưu' có được đánh dấu không?"
     },
     "checkbox_ketluanketluankham_itnguyco": {
         "name": "Checkbox kết luận khám - ít nguy cơ (A và C)",
@@ -253,7 +284,8 @@
         "y": 1865,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Ít nguy cơ (A và C)' trong kết luận khám có được đánh dấu không?"
     },
     "checkbox_ketluanketluankham_candikham": {
         "name": "Checkbox kết luận khám - Cần đi khám chuyên khoa mắt (B và D)",
@@ -261,7 +293,8 @@
         "y": 1865,
         "w": 30,
         "h": 30,
-        "type": "checkbox"
+        "type": "checkbox",
+        "question": "Ô 'Cần đi khám chuyên khoa mắt (B và D)' có được đánh dấu không?"
     },
     "ngay": {
         "name": "ngày",
@@ -269,7 +302,8 @@
         "y": 2225,
         "w": 52,
         "h": 44,
-        "type": "handwritten_number"
+        "type": "handwritten_number",
+        "question": "Ngày ký là ngày bao nhiêu?"
     },
     "thang": {
         "name": "tháng",
@@ -277,7 +311,8 @@
         "y": 2225,
         "w": 50,
         "h": 50,
-        "type": "handwritten_number"
+        "type": "handwritten_number",
+        "question": "Tháng ký là tháng bao nhiêu?"
     },
     "nam": {
         "name": "năm",
@@ -285,6 +320,7 @@
         "y": 2229,
         "w": 81,
         "h": 36,
-        "type": "handwritten_number"
+        "type": "handwritten_number",
+        "question": "Năm ký là năm bao nhiêu?"
     }
 }
