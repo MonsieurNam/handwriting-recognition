@@ -3,8 +3,8 @@
 import cv2
 import numpy as np
 from PIL import Image
-import re  # <<< THÊM MỚI: Thư viện Biểu thức chính quy
-from thefuzz import process as fuzzy_process  # <<< THÊM MỚI: Thư viện So khớp mờ
+import re
+from thefuzz import process as fuzzy_process
 
 from .utils import is_checkbox_ticked
 
@@ -18,7 +18,7 @@ def _preprocess_roi_for_ocr(roi_image):
     return cv2.cvtColor(sharpened, cv2.COLOR_GRAY2BGR)
 
 # ==============================================================================
-# === BẮT ĐẦU VÙNG MÃ NGUỒN HẬU XỬ LÝ NÂNG CAO (THAY THẾ CODE CŨ) ===
+# === BẮT ĐẦU VÙNG MÃ NGUỒN HẬU XỬ LÝ NÂNG CAO (GIỮ NGUYÊN) ===
 # ==============================================================================
 
 def _post_process_date_regex(text):
@@ -81,7 +81,7 @@ def _post_process_text(field_name, text):
         processed_text = ' '.join([word.capitalize() for word in processed_text.split()])
     
     # In ra để so sánh trước và sau khi xử lý
-    print(f"    - Hậu xử lý cho '{field_name}': '{raw_text}' -> '{processed_text}'")
+    print(f"    - Hậu xử lý (cho TrOCR): '{raw_text}' -> '{processed_text}'")
     return processed_text
 
 # ==============================================================================
@@ -122,24 +122,65 @@ def run_ocr_pipeline(aligned_image, roi_config, ocr_engines):
                 result = is_checkbox_ticked(roi_cv2)
                 final_results[field_name] = result
                 print(f"  - [Checkbox] '{field_name}': {result}")
+            
+            # # Logic cũ chỉ chạy 1 model đã bị thay thế hoàn toàn
             else:
                 preprocessed_roi = _preprocess_roi_for_ocr(roi_cv2)
                 
-                recognized_text = ""
-                if ocr_engines.vi_trocr_engine: # Giữ nguyên engine OCR hiện tại để thử nghiệm
-                    try:
-                        roi_pil = Image.fromarray(cv2.cvtColor(preprocessed_roi, cv2.COLOR_BGR2RGB))
-                        recognized_text = ocr_engines.vi_trocr_engine.predict(roi_pil)
-                    except Exception as e:
-                        print(f"LỖI OCR tại trường '{field_name}': {e}")
-                
-                # --- THAY ĐỔI: Gọi hàm điều phối hậu xử lý mới ---
-                processed_text = _post_process_text(field_name, recognized_text)
-                final_results[field_name] = processed_text
-                # Thay đổi cách in để rõ ràng hơn
-                print(f"  - [Text] '{field_name}': '{processed_text}' (Raw OCR: '{recognized_text}')")
+                text_vietocr = ""
+                text_easyocr = ""
+                text_trocr = ""
 
-        except KeyError as e:
+                # 1. Chạy VietOCR
+                if ocr_engines.vietocr_engine:
+                    try:
+                        # VietOCR cần ảnh PIL (RGB)
+                        roi_pil_vietocr = Image.fromarray(cv2.cvtColor(preprocessed_roi, cv2.COLOR_BGR2RGB))
+                        text_vietocr = ocr_engines.vietocr_engine.predict(roi_pil_vietocr)
+                    except Exception as e:
+                        print(f"    - LỖI VietOCR: {e}")
+
+                # 2. Chạy EasyOCR
+                if ocr_engines.easyocr_engine:
+                    try:
+                        # EasyOCR làm việc tốt với mảng numpy (BGR)
+                        results = ocr_engines.easyocr_engine.readtext(preprocessed_roi, detail=0, paragraph=True)
+                        text_easyocr = " ".join(results)
+                    except Exception as e:
+                        print(f"    - LỖI EasyOCR: {e}")
+                
+                # 3. Chạy TrOCR (Transformer OCR)
+                if ocr_engines.vi_trocr_engine and ocr_engines.vi_trocr_processor:
+                    try:
+                        # TrOCR cần ảnh PIL (RGB) và processor
+                        roi_pil_trocr = Image.fromarray(cv2.cvtColor(preprocessed_roi, cv2.COLOR_BGR2RGB))
+                        pixel_values = ocr_engines.vi_trocr_processor(images=roi_pil_trocr, return_tensors="pt").pixel_values.to(ocr_engines.device)
+                        # Tăng max_new_tokens để tránh text bị cắt ngắn
+                        generated_ids = ocr_engines.vi_trocr_engine.generate(pixel_values, max_new_tokens=128)
+                        text_trocr = ocr_engines.vi_trocr_processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+                    except Exception as e:
+                        print(f"    - LỖI TrOCR: {e}")
+                
+                # Hậu xử lý cho một kết quả (ví dụ: TrOCR) để làm kết quả "cuối cùng"
+                # Bạn có thể thay đổi logic này (ví dụ: chọn kết quả tốt nhất/voting)
+                processed_text = _post_process_text(field_name, text_trocr)
+                
+                # Lưu tất cả kết quả vào dictionary
+                field_result_data = {
+                    "vietocr_raw": text_vietocr,
+                    "easyocr_raw": text_easyocr,
+                    "trocr_raw": text_trocr,
+                    "final_processed": processed_text
+                }
+                
+                final_results[field_name] = field_result_data
+                
+                # In kết quả ra console
+                print(f"  - [Text] '{field_name}':")
+                print(f"    - VietOCR: '{text_vietocr}'")
+                print(f"    - EasyOCR: '{text_easyocr}'")
+                print(f"    - TrOCR  : '{text_trocr}'")
+            # except KeyError as e:
             print(f"LỖI: Trường '{field_name}' trong cấu hình ROI thiếu thông tin: {e}")
         except Exception as e:
             print(f"LỖI không xác định khi xử lý trường '{field_name}': {e}")
