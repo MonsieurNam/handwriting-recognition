@@ -10,3 +10,4 @@ easyocr
 pyvi
 gradio
 Pillow
+transformers 
