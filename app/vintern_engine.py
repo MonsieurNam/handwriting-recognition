@@ -61,7 +61,7 @@ class VinternEngine:
         """
         # Câu lệnh prompt yêu cầu Vintern trả về kết quả dưới dạng JSON.
         # Điều này giúp việc phân tích cú pháp trở nên dễ dàng và đáng tin cậy hơn.
-        prompt = """<image>\nMô tả hình ảnh một cách chi tiết trả về dạng markdown."""
+        prompt = """<image>\nMô tả hình ảnh một cách chi tiết trả về dạng json."""
         pixel_values = self._prepare_image_tensor(image_pil)
         generation_config = dict(max_new_tokens=1024, do_sample=False, num_beams=3, repetition_penalty=3.5)
 
