@@ -5,10 +5,12 @@ from transformers import AutoModel, AutoTokenizer
 from PIL import Image
 import torchvision.transforms as T
 from torchvision.transforms.functional import InterpolationMode
+import json
+import re
 
 class VinternEngine:
     """
-    Quản lý việc tải và sử dụng mô hình Vintern.
+    Quản lý việc tải và sử dụng mô hình Vintern để trích xuất dữ liệu có cấu trúc từ toàn bộ ảnh.
     """
     def __init__(self, model_name="5CD-AI/Vintern-1B-v3_5", use_gpu=True):
         self.device = 'cuda:0' if use_gpu and torch.cuda.is_available() else 'cpu'
@@ -22,6 +24,7 @@ class VinternEngine:
     def _initialize_vintern(self):
         try:
             print(f"\n--- Đang khởi tạo Vintern: {self.model_name}...")
+            # Cấu hình để tối ưu hóa việc sử dụng GPU
             self.model = AutoModel.from_pretrained(
                 self.model_name,
                 torch_dtype=torch.bfloat16,
@@ -48,21 +51,36 @@ class VinternEngine:
             T.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD)
         ])
 
-    def _prepare_image(self, roi_image_pil):
-        pixel_values = self.transform(roi_image_pil).unsqueeze(0)
+    def _prepare_image_tensor(self, image_pil):
+        pixel_values = self.transform(image_pil).unsqueeze(0)
         return pixel_values.to(torch.bfloat16).to(self.device)
 
-    def extract_text(self, roi_image_pil, question="Văn bản trong hình là gì?"):
-        pixel_values = self._prepare_image(roi_image_pil)
-        generation_config = dict(max_new_tokens=512, do_sample=False, num_beams=3)
-        
-        full_question = f"<image>\n{question}"
-        response = self.model.chat(self.tokenizer, pixel_values, full_question, generation_config)
-        return response.strip()
+    def extract_text_fields_from_image(self, image_pil):
+        """
+        Trích xuất tất cả các trường văn bản từ toàn bộ ảnh và trả về dưới dạng dictionary.
+        """
+        # Câu lệnh prompt yêu cầu Vintern trả về kết quả dưới dạng JSON.
+        # Điều này giúp việc phân tích cú pháp trở nên dễ dàng và đáng tin cậy hơn.
+        prompt = """<image>
+Phân tích hình ảnh của biểu mẫu sau. Trích xuất tất cả thông tin văn bản được điền bằng tay và trả về dưới dạng một đối tượng JSON. Sử dụng các khóa (keys) sau: "ho_ten", "ngay_sinh", "lop", "thi_luc_khong_kinh_phai", "thi_luc_khong_kinh_trai", "thi_luc_co_kinh_phai", "thi_luc_co_kinh_trai", "ngay", "thang", "nam".
+Chỉ trả về đối tượng JSON hợp lệ, không có bất kỳ văn bản giải thích nào khác.
+"""
+        pixel_values = self._prepare_image_tensor(image_pil)
+        generation_config = dict(max_new_tokens=1024, do_sample=False, num_beams=3)
 
-    def is_checkbox_checked(self, roi_image_pil):
-        question = "Trong ảnh có ô checkbox được tích không? Trả lời 'CÓ' hoặc 'KHÔNG'."
-        response = self.extract_text(roi_image_pil, question)
-        # Phân tích câu trả lời của mô hình
-        # Đây là một cách tiếp cận đơn giản, có thể cần cải tiến để xử lý các câu trả lời đa dạng hơn
-        return "có" in response.lower()
+        response_text = self.model.chat(self.tokenizer, pixel_values, prompt, generation_config)
+        print(f"  - Phản hồi thô từ Vintern:\n{response_text}")
+
+        # Cố gắng trích xuất và phân tích cú pháp JSON từ phản hồi của mô hình
+        try:
+            # Tìm chuỗi JSON trong phản hồi (bao gồm cả trường hợp có markdown code block)
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                return json.loads(json_str)
+            else:
+                print("  - Cảnh báo: Không tìm thấy chuỗi JSON hợp lệ trong phản hồi của Vintern.")
+                return {}
+        except json.JSONDecodeError:
+            print(f"  - Lỗi: Không thể phân tích cú pháp JSON từ phản hồi của Vintern.")
+            return {}
