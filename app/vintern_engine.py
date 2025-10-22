@@ -61,8 +61,8 @@ class VinternEngine:
         """
         # Câu lệnh prompt yêu cầu Vintern trả về kết quả dưới dạng JSON.
         # Điều này giúp việc phân tích cú pháp trở nên dễ dàng và đáng tin cậy hơn.
-        prompt = """<image>
-Phân tích hình ảnh của biểu mẫu sau. Trích xuất tất cả thông tin văn bản được điền bằng tay và trả về dưới dạng một đối tượng JSON. Sử dụng các khóa (keys) sau: "ho_ten", "ngay_sinh", "lop", "thi_luc_khong_kinh_phai", "thi_luc_khong_kinh_trai", "thi_luc_co_kinh_phai", "thi_luc_co_kinh_trai", "ngay", "thang", "nam".
+        prompt = """<image>\n
+Mô tả hình ảnh một cách chi tiết, trả về dưới dạng một đối tượng JSON. Sử dụng các khóa (keys) sau: "ho_ten", "ngay_sinh", "lop", "thi_luc_khong_kinh_phai", "thi_luc_khong_kinh_trai", "thi_luc_co_kinh_phai", "thi_luc_co_kinh_trai", "ngay", "thang", "nam".
 Chỉ trả về đối tượng JSON hợp lệ, không có bất kỳ văn bản giải thích nào khác.
 """
         pixel_values = self._prepare_image_tensor(image_pil)
