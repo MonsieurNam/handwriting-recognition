@@ -39,7 +39,7 @@ def run_combined_pipeline(aligned_image, roi_config, vintern_engine):
     print("\n>>> Đang dùng Vintern để trích xuất các trường văn bản từ toàn bộ ảnh...")
     # Chuyển đổi ảnh từ OpenCV (BGR) sang PIL (RGB)
     aligned_pil = Image.fromarray(cv2.cvtColor(aligned_image, cv2.COLOR_BGR2RGB))
-    
+    cv2.imwrite("Data_Output/debug_aligned_image.png", aligned_image)  # Lưu ảnh đã căn chỉnh để kiểm tra nếu cần
     # Gọi Vintern để lấy dictionary chứa các trường văn bản
     text_data_from_vintern = vintern_engine.extract_text_fields_from_image(aligned_pil)
     
