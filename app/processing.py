@@ -15,45 +15,19 @@ from .config import OUTPUT_PATH
 # ==============================================================================
 
 def _advanced_preprocess_for_ocr(roi_image):
-    """
-    Pipeline tiền xử lý cuối cùng, đảm bảo đầu ra là ảnh CHỮ ĐEN, NỀN TRẮNG.
-    """
-    # 1. Chuyển sang ảnh xám và làm mịn để loại bỏ nhiễu hạt
+    """Pipeline tiền xử lý "Connect & Remove" để xóa nhiễu hạt và đường chấm."""
     gray = cv2.cvtColor(roi_image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.medianBlur(gray, 3)
-
-    # 2. Nhị phân hóa bằng Otsu. LƯU Ý: ĐÃ BỎ `THRESH_BINARY_INV`
-    # Kết quả: Chữ sẽ thành màu đen (0), nền thành màu trắng (255).
-    _, thresh_orig = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # --- Bắt đầu quy trình "Connect & Remove" ---
-    # Vì bây giờ chữ màu đen và nền màu trắng, chúng ta cần đảo ngược ảnh TẠM THỜI
-    # để các phép toán hình thái học (tìm đối tượng trắng) hoạt động đúng.
-    thresh_inv = cv2.bitwise_not(thresh_orig)
-    
-    # 3. Nối các dấu chấm thành đường liền mạch trên ảnh đảo ngược
+    _, thresh_orig = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     w = roi_image.shape[1]
     close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (w // 20, 1))
-    closed_img = cv2.morphologyEx(thresh_inv, cv2.MORPH_CLOSE, close_kernel, iterations=1)
-
-    # 4. Phát hiện các đường kẻ liền trên ảnh đã được "nối"
+    closed_img = cv2.morphologyEx(thresh_orig, cv2.MORPH_CLOSE, close_kernel, iterations=1)
     open_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (w // 2, 1))
-    line_mask_inv = cv2.morphologyEx(closed_img, cv2.MORPH_OPEN, open_kernel, iterations=1)
-
-    # 5. Làm dày mặt nạ một chút
+    line_mask = cv2.morphologyEx(closed_img, cv2.MORPH_OPEN, open_kernel, iterations=1)
     dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    dilated_line_mask_inv = cv2.dilate(line_mask_inv, dilate_kernel, iterations=1)
-
-    # 6. Đảo ngược lại mặt nạ để nó có cùng định dạng với thresh_orig
-    # (Các đường kẻ bây giờ là màu đen)
-    dilated_line_mask = cv2.bitwise_not(dilated_line_mask_inv)
-
-    # 7. Dùng phép toán AND để loại bỏ các đường kẻ đen
-    # Thao tác này sẽ giữ lại tất cả các pixel trắng ở ảnh gốc,
-    # nhưng ở những nơi có đường kẻ đen trên mặt nạ, nó cũng sẽ biến thành đen.
-    final_thresh = cv2.bitwise_and(thresh_orig, thresh_orig, mask=dilated_line_mask)
-    
-    # 8. Chuyển ảnh đen trắng cuối cùng về định dạng BGR 3 kênh
+    dilated_line_mask = cv2.dilate(line_mask, dilate_kernel, iterations=1)
+    final_thresh = cv2.subtract(thresh_orig, dilated_line_mask)
+    final_thresh = cv2.bitwise_not(final_thresh)
     return cv2.cvtColor(final_thresh, cv2.COLOR_GRAY2BGR)
 
 # ==============================================================================
