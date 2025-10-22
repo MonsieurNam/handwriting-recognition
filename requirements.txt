@@ -11,3 +11,5 @@ pyvi
 gradio
 Pillow
 transformers 
+thefuzz 
+python-Levenshtein

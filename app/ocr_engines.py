@@ -4,8 +4,7 @@ import torch
 import easyocr
 from vietocr.tool.predictor import Predictor
 from vietocr.tool.config import Cfg
-# THÊM DÒNG NÀY: Import các lớp cần thiết từ transformers
-from transformers import VisionEncoderDecoderModel, AutoProcessor
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel, AutoProcessor
 
 class OCREngines:
     def __init__(self, use_gpu=True):
@@ -14,10 +13,9 @@ class OCREngines:
         
         self.vietocr_engine = self._initialize_vietocr()
         self.easyocr_engine = self._initialize_easyocr()
-        
-        # --- THAY ĐỔI: Kích hoạt và chỉ định mô hình TrOCR tối ưu ---
-        # Chúng ta sẽ lưu cả model và processor của nó
-        self.trocr_model, self.trocr_processor = self._initialize_trocr("nguyenvulebinh/trocr-base-vietnamese-handwritten")
+        # Thêm các engine TrOCR nếu cần
+        self.trocr_engine, self.trocr_processor = self._initialize_trocr("nguyenvulebinh/trocr-base-vietnamese-handwritten")
+        self.vi_trocr_engine, self.vi_trocr_processor = self._initialize_trocr("duyle2408/trocr-vietnamese-handwriting")
 
     def _initialize_vietocr(self):
         print("\n--- Đang khởi tạo VietOCR Engine ---")
@@ -25,7 +23,7 @@ class OCREngines:
             config = Cfg.load_config_from_name('vgg_transformer')
             config['weights'] = 'https://vocr.vn/data/vietocr/vgg_transformer.pth'
             config['device'] = self.device
-            config['predictor']['beamsearch'] = False
+            config['predictor']['beamsearch'] = False # Tắt để nhanh hơn
             engine = Predictor(config)
             print("VietOCR Engine đã khởi tạo thành công.")
             return engine
@@ -46,12 +44,13 @@ class OCREngines:
     def _initialize_trocr(self, model_name):
         print(f"\n--- Đang khởi tạo TrOCR Engine: {model_name} ---")
         try:
-            # Processor chuẩn bị dữ liệu ảnh cho model
             processor = AutoProcessor.from_pretrained(model_name)
-            # Model chính để nhận dạng
             model = VisionEncoderDecoderModel.from_pretrained(model_name).to(self.device)
             print(f"TrOCR '{model_name}' đã khởi tạo thành công.")
             return model, processor
         except Exception as e:
             print(f"LỖI khi khởi tạo TrOCR '{model_name}': {e}")
             return None, None
+
+# Tạo một instance duy nhất để sử dụng trong toàn bộ ứng dụng (Singleton pattern)
+# ocr_models = OCREngines(use_gpu=True)
