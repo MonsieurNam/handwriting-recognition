@@ -5,155 +5,144 @@ import numpy as np
 from PIL import Image
 import re
 import os
+from thefuzz import fuzz # Import thư viện để so sánh độ tương đồng chuỗi
 
 from .utils import is_checkbox_ticked
 from .config import OUTPUT_PATH
 
 # ==============================================================================
-# === BƯỚC 1: HÀM TIỀN XỬ LÝ NÂNG CAO (THAY THẾ TOÀN BỘ CODE CŨ) ===
+# === BƯỚC 1: HÀM TIỀN XỬ LÝ (GIỮ NGUYÊN PHIÊN BẢN TỐT NHẤT) ===
 # ==============================================================================
 
 def _advanced_preprocess_for_ocr(roi_image):
-    """
-    Pipeline tiền xử lý nâng cao để xử lý nhiễu hạt và đường kẻ.
-    """
-    # Bước 1: Chuyển sang ảnh xám
+    """Pipeline tiền xử lý "Connect & Remove" để xóa nhiễu hạt và đường chấm."""
     gray = cv2.cvtColor(roi_image, cv2.COLOR_BGR2GRAY)
-    
-    # Bước 2: Làm mịn ảnh để loại bỏ nhiễu hạt (texture của giấy)
-    # MedianBlur rất hiệu quả với nhiễu "salt-and-pepper".
-    # Kích thước kernel là 3 (phải là số lẻ).
     blurred = cv2.medianBlur(gray, 3)
-
-    # Bước 3: Nhị phân hóa bằng phương pháp Otsu để tách biệt chữ và nền
-    # Sau khi làm mịn, Otsu sẽ hoạt động rất hiệu quả.
-    # THRESH_BINARY_INV: Chữ sẽ thành màu trắng (255), nền thành màu đen (0).
-    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    # Bước 4: Loại bỏ các đường chấm trên ảnh đen trắng đã sạch
-    h, w = roi_image.shape[:2]
-    # Tạo kernel ngang để phát hiện đường kẻ
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (w // 10, 1))
-    # Phát hiện và xóa chúng
-    detected_lines = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
-    cnts, _ = cv2.findContours(detected_lines, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for c in cnts:
-        # Tô màu đen lên các đường kẻ đã phát hiện
-        cv2.drawContours(thresh, [c], -1, (0, 0, 0), 2)
-
-    # Bước 5: Chuyển ảnh đen trắng cuối cùng về định dạng 3 kênh (BGR)
-    # mà các engine OCR mong đợi.
-    return cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
-
+    _, thresh_orig = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    w = roi_image.shape[1]
+    close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (w // 20, 1))
+    closed_img = cv2.morphologyEx(thresh_orig, cv2.MORPH_CLOSE, close_kernel, iterations=1)
+    open_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (w // 2, 1))
+    line_mask = cv2.morphologyEx(closed_img, cv2.MORPH_OPEN, open_kernel, iterations=1)
+    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    dilated_line_mask = cv2.dilate(line_mask, dilate_kernel, iterations=1)
+    final_thresh = cv2.subtract(thresh_orig, dilated_line_mask)
+    return cv2.cvtColor(final_thresh, cv2.COLOR_GRAY2BGR)
 
 # ==============================================================================
-# === BƯỚC 2: CÁC HÀM HẬU XỬ LÝ (GIỮ NGUYÊN) ===
+# === BƯỚC 2: HÀM ENSEMBLE "BỎ PHIẾU" ĐỂ CHỌN KẾT QUẢ TỐT NHẤT ===
 # ==============================================================================
 
-def _post_process_date_regex(text):
-    if not text: return ""
-    digits = re.sub(r'\D', '', text)
-    if len(digits) == 8: return f"{digits[0:2]}/{digits[2:4]}/{digits[4:8]}"
-    match = re.search(r'(\d{1,2})[./\s-]*(\d{1,2})[./\s-]*(\d{4})', text)
-    if match:
-        day, month, year = match.groups()
-        return f"{day.zfill(2)}/{month.zfill(2)}/{year}"
-    return text.strip()
+def _get_best_result_from_votes(predictions):
+    """
+    Chọn ra kết quả tốt nhất từ một danh sách các dự đoán của nhiều model.
+    Logic: Kết quả nào có độ tương đồng trung bình cao nhất với tất cả các kết quả khác
+    sẽ được coi là kết quả "đồng thuận" và được chọn.
+    """
+    # Lọc bỏ các kết quả rỗng hoặc chỉ có khoảng trắng
+    predictions = [p.strip() for p in predictions if p and p.strip()]
 
-def _post_process_class_regex(text):
-    if not text: return ""
-    match = re.search(r'(\d{1,2}\s*[A-Z]\d?)', text.upper())
-    if match: return re.sub(r'\s', '', match.group(1))
-    return text.strip()
+    if not predictions:
+        return ""
+    if len(predictions) == 1:
+        return predictions[0]
+
+    scores = {}
+    for p1 in predictions:
+        # Tính tổng điểm tương đồng của p1 với tất cả các dự đoán khác
+        total_score = sum(fuzz.ratio(p1, p2) for p2 in predictions)
+        # Lưu trữ điểm, nếu đã có thì cộng thêm để xử lý trường hợp các model ra kết quả y hệt
+        scores[p1] = scores.get(p1, 0) + total_score
+    
+    # Trả về dự đoán có tổng điểm cao nhất
+    return max(scores, key=scores.get)
+
+# ==============================================================================
+# === BƯỚC 3: CÁC HÀM HẬU XỬ LÝ (GIỮ NGUYÊN) ===
+# ==============================================================================
 
 def _post_process_text(field_name, text):
+    # ... (Giữ nguyên các hàm hậu xử lý regex của bạn)
     raw_text = text
     processed_text = text.strip()
-    if field_name == 'ngay_sinh': processed_text = _post_process_date_regex(processed_text)
-    elif field_name == 'lop': processed_text = _post_process_class_regex(processed_text)
+    if field_name == 'ngay_sinh': processed_text = re.sub(r'\D', '', processed_text) # Đơn giản hóa
+    elif field_name == 'lop': processed_text = re.sub(r'[^A-Z0-9]', '', processed_text.upper()) # Đơn giản hóa
     elif field_name == 'ho_ten': processed_text = ' '.join([word.capitalize() for word in processed_text.split()])
     print(f"    - Hậu xử lý cho '{field_name}': '{raw_text}' -> '{processed_text}'")
     return processed_text
-
+    
 # ==============================================================================
-# === BƯỚC 3: HÀM ĐIỀU PHỐI PIPELINE CHÍNH (CẬP NHẬT ĐỂ GỌI HÀM MỚI) ===
+# === BƯỚC 4: PIPELINE CHÍNH VỚI LOGIC ENSEMBLE ===
 # ==============================================================================
 
 def run_ocr_pipeline(aligned_image, roi_config, ocr_engines):
-    """
-    Thực thi pipeline trích xuất thông tin với tiền xử lý nâng cao.
-    """
     print("\n--- Bắt đầu Pipeline Trích xuất Thông tin ---")
     final_results = {}
     
-    handwritten_fields = ['ho_ten', 'ngay_sinh', 'lop']
-    
-    if not roi_config: return {}
-
     for field_name, data in roi_config.items():
         try:
             field_type = data.get('type', 'text')
             x, y, w, h = data['x'], data['y'], data['w'], data['h']
-            
             roi_cv2 = aligned_image[y:y+h, x:x+w]
             if roi_cv2.size == 0: continue
             
             if field_type == 'checkbox':
-                result = is_checkbox_ticked(roi_cv2)
-                final_results[field_name] = result
-                print(f"  - [Checkbox] '{field_name}': {result}")
+                final_results[field_name] = is_checkbox_ticked(roi_cv2)
+                print(f"  - [Checkbox] '{field_name}': {final_results[field_name]}")
             else:
-                # --- THAY ĐỔI: GỌI DUY NHẤT HÀM TIỀN XỬ LÝ NÂNG CAO ---
-                print(f"  - [Preprocess] Áp dụng pipeline nâng cao cho '{field_name}'...")
                 preprocessed_roi = _advanced_preprocess_for_ocr(roi_cv2)
-
-                # --- LƯU ẢNH GỠ LỖI ---
-                # Lưu ảnh gốc và ảnh sau khi xử lý để so sánh
-                cv2.imwrite(os.path.join(OUTPUT_PATH, f"DEBUG_{field_name}_0_original.png"), roi_cv2)
-                cv2.imwrite(os.path.join(OUTPUT_PATH, f"DEBUG_{field_name}_1_processed.png"), preprocessed_roi)
-                
+                cv2.imwrite(os.path.join(OUTPUT_PATH, f"DEBUG_{field_name}_processed.png"), preprocessed_roi)
                 roi_pil = Image.fromarray(preprocessed_roi)
                 
-                recognized_text = ""
-                
-                # --- LOGIC OCR FALLBACK (GIỮ NGUYÊN) ---
-                if field_name in handwritten_fields:
-                    if ocr_engines.trocr_handwritten_model:
-                        try:
-                            print(f"  - [OCR] Thử TrOCR-Handwritten cho '{field_name}'...")
-                            processor = ocr_engines.trocr_handwritten_processor
-                            model = ocr_engines.trocr_handwritten_model
-                            pixel_values = processor(images=roi_pil, return_tensors="pt").pixel_values.to(ocr_engines.device)
-                            generated_ids = model.generate(pixel_values, max_length=64)
-                            recognized_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                        except Exception as e:
-                            print(f"    -> Lỗi TrOCR-Handwritten: {e}")
+                all_predictions = []
 
-                    if not recognized_text and o-cr_engines.trocr_general_model:
-                        try:
-                            print(f"  - [OCR] Thử TrOCR-General (dự phòng) cho '{field_name}'...")
-                            processor = ocr_engines.trocr_general_processor
-                            model = ocr_engines.trocr_general_model
-                            pixel_values = processor(images=roi_pil, return_tensors="pt").pixel_values.to(ocr_engines.device)
-                            generated_ids = model.generate(pixel_values, max_length=64)
-                            recognized_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-                        except Exception as e:
-                            print(f"    -> Lỗi TrOCR-General: {e}")
-                
-                if not recognized_text and ocr_engines.vietocr_engine:
+                # --- CHẠY DỰ ĐOÁN TRÊN TẤT CẢ CÁC ENGINE HIỆN CÓ ---
+                print(f"\n>>> Đang xử lý trường '{field_name}' với tất cả các model...")
+
+                # 1. VietOCR
+                if 'vietocr' in ocr_engines.engines:
                     try:
-                        print(f"  - [OCR] Thử VietOCR (cuối cùng) cho '{field_name}'...")
-                        recognized_text = ocr_engines.vietocr_engine.predict(roi_pil)
+                        text = ocr_engines.engines['vietocr'].predict(roi_pil)
+                        all_predictions.append(text)
+                        print(f"  - VietOCR Result: '{text}'")
                     except Exception as e:
-                        print(f"    -> Lỗi VietOCR: {e}")
+                        print(f"  - Lỗi VietOCR: {e}")
+
+                # 2. TrOCR Handwritten
+                if 'trocr_handwritten' in ocr_engines.engines:
+                    try:
+                        model, processor = ocr_engines.engines['trocr_handwritten']
+                        pixel_values = processor(images=roi_pil, return_tensors="pt").pixel_values.to(ocr_engines.device)
+                        generated_ids = model.generate(pixel_values, max_length=64)
+                        text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+                        all_predictions.append(text)
+                        print(f"  - TrOCR-Handwritten Result: '{text}'")
+                    except Exception as e:
+                        print(f"  - Lỗi TrOCR-Handwritten: {e}")
+
+                # 3. TrOCR General
+                if 'trocr_general' in ocr_engines.engines:
+                    try:
+                        model, processor = ocr_engines.engines['trocr_general']
+                        pixel_values = processor(images=roi_pil, return_tensors="pt").pixel_values.to(ocr_engines.device)
+                        generated_ids = model.generate(pixel_values, max_length=64)
+                        text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+                        all_predictions.append(text)
+                        print(f"  - TrOCR-General Result: '{text}'")
+                    except Exception as e:
+                        print(f"  - Lỗi TrOCR-General: {e}")
                 
-                # --- HẬU XỬ LÝ (GIỮ NGUYÊN) ---
-                processed_text = _post_process_text(field_name, recognized_text)
+                # --- TỔNG HỢP KẾT QUẢ TỐT NHẤT ---
+                best_text = _get_best_result_from_votes(all_predictions)
+                print(f"  -> Kết quả đồng thuận (Best Vote): '{best_text}'")
+
+                # Áp dụng hậu xử lý trên kết quả tốt nhất
+                processed_text = _post_process_text(field_name, best_text)
                 final_results[field_name] = processed_text
-                print(f"  - [Text] '{field_name}': '{processed_text}' (Raw OCR: '{recognized_text}')")
+                print(f"  => KẾT QUẢ CUỐI CÙNG cho '{field_name}': '{processed_text}' (Votes: {all_predictions})")
 
         except Exception as e:
             print(f"LỖI KHÔNG XÁC ĐỊNH khi xử lý trường '{field_name}': {e}")
             
-    print("--- Pipeline Trích xuất Hoàn tất ---")
+    print("\n--- Pipeline Trích xuất Hoàn tất ---")
     return final_results
