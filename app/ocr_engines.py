@@ -21,7 +21,7 @@ class OCREngines:
         
         # Mô hình 1: Chuyên cho chữ viết tay
         self.trocr_handwritten_model, self.trocr_handwritten_processor = self._initialize_trocr(
-            "nguyenvulebinh/trocr-base-vietnamese-handwritten"
+            "duyle2408/trocr-vietnamese-handwriting"
         )
         
         # Mô hình 2: Một lựa chọn mạnh mẽ khác để dự phòng
