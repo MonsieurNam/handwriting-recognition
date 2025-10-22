@@ -19,7 +19,7 @@ def _advanced_preprocess_for_ocr(roi_image):
     Pipeline tiền xử lý cuối cùng, đảm bảo đầu ra là ảnh CHỮ ĐEN, NỀN TRẮNG.
     """
     # 1. Chuyển sang ảnh xám và làm mịn để loại bỏ nhiễu hạt
-    gray = cv2.cvtColor(roi_image, cv2.COLOR_BGR_GRAY)
+    gray = cv2.cvtColor(roi_image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.medianBlur(gray, 3)
 
     # 2. Nhị phân hóa bằng Otsu. LƯU Ý: ĐÃ BỎ `THRESH_BINARY_INV`
