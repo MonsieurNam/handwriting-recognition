@@ -63,7 +63,7 @@ class VinternEngine:
         # Điều này giúp việc phân tích cú pháp trở nên dễ dàng và đáng tin cậy hơn.
         prompt = """<image>\nMô tả hình ảnh một cách chi tiết trả về dưới dạng JSON"""
         pixel_values = self._prepare_image_tensor(image_pil)
-        generation_config = dict(max_new_tokens=1024, do_sample=False, num_beams=3)
+        generation_config = dict(max_new_tokens=1024, do_sample=False, num_beams=3, repetition_penalty=3.5)
 
         response_text = self.model.chat(self.tokenizer, pixel_values, prompt, generation_config)
         print(f"  - Phản hồi thô từ Vintern:\n{response_text}")
