@@ -2,78 +2,82 @@
 
 import cv2
 import numpy as np
-from .utils import order_points # Import từ module utils trong cùng package
+from .utils import order_points
 
 def _find_page_contour(image):
     """
-    Hàm nội bộ: Tìm đường viền (contour) của toàn bộ trang giấy trong ảnh.
-    Phương pháp này tập trung vào việc tìm đa giác 4 cạnh lớn nhất chiếm phần lớn diện tích ảnh.
+    Hàm nội bộ: Tìm đường viền của trang giấy bằng phương pháp ngưỡng hóa tự động.
+    Đây là phương pháp mạnh mẽ hơn, hoạt động tốt với nhiều điều kiện ánh sáng và nền khác nhau.
     """
-    # 1. Tiền xử lý: Chuyển sang ảnh xám, làm mờ và phát hiện cạnh
+    # 1. Tiền xử lý
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    edged = cv2.Canny(blurred, 75, 200)
+    blurred = cv2.GaussianBlur(gray, (7, 7), 0) # Tăng kích thước kernel để làm mờ tốt hơn
 
-    # 2. Tìm các đường viền
-    contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    if len(contours) == 0:
+    # 2. Ngưỡng hóa tự động (Otsu's Method)
+    # THRESH_BINARY_INV: Đảo ngược màu, biến trang giấy (sáng màu) thành màu trắng và nền (tối màu) thành màu đen.
+    # THRESH_OTSU: Tự động tính toán giá trị ngưỡng tối ưu thay vì dùng một số cố định.
+    # Đây là trái tim của phương pháp mới.
+    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+
+    # (Tùy chọn) Lưu ảnh ngưỡng để debug
+    # cv2.imwrite("Data_Output/debug_threshold.png", thresh)
+
+    # 3. Tìm các đường viền trên ảnh đã được ngưỡng hóa
+    # Chỉ tìm các đường viền ngoài cùng để giảm nhiễu
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not contours:
+        print("  - Lỗi phụ: Không tìm thấy bất kỳ contour nào sau khi ngưỡng hóa.")
         return None
 
-    # 3. Sắp xếp các đường viền theo diện tích từ lớn đến nhỏ
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+    # 4. Tìm đường viền lớn nhất
+    # Giả định rằng đường viền có diện tích lớn nhất chính là trang giấy
+    page_contour = max(contours, key=cv2.contourArea)
 
-    # 4. Lặp qua các đường viền để tìm trang giấy
-    for c in contours:
-        # Bỏ qua các contour quá nhỏ để tránh nhiễu
-        # Giả định trang giấy phải chiếm ít nhất 20% diện tích ảnh
-        if cv2.contourArea(c) < (image.shape[0] * image.shape[1] * 0.2):
-            continue
+    # 5. Xấp xỉ đường viền lớn nhất thành một đa giác 4 đỉnh
+    peri = cv2.arcLength(page_contour, True)
+    approx = cv2.approxPolyDP(page_contour, 0.02 * peri, True)
 
-        peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+    # 6. Kiểm tra xem có đúng 4 đỉnh không
+    if len(approx) == 4:
+        # (Tùy chọn) Vẽ contour tìm được để debug
+        # debug_image = image.copy()
+        # cv2.drawContours(debug_image, [approx], -1, (0, 255, 0), 5)
+        # cv2.imwrite("Data_Output/debug_page_contour_found.png", debug_image)
+        return approx
+    else:
+        print(f"  - Lỗi phụ: Contour lớn nhất tìm được không có 4 đỉnh (tìm thấy {len(approx)} đỉnh).")
+        return None
 
-        if len(approx) == 4:
-            return approx  # Trả về contour 4 đỉnh lớn đầu tiên tìm được
-
-    return None
 
 def align_image(image_to_align, template_image):
     """
     Căn chỉnh ảnh đầu vào dựa trên ảnh mẫu bằng cách khớp các góc của trang giấy.
-    Phiên bản này sửa lỗi cắt hình bằng cách sử dụng các góc cố định của ảnh mẫu làm đích.
+    Sử dụng thuật toán phát hiện trang giấy mạnh mẽ và giữ nguyên logic sửa lỗi cắt hình.
     """
-    print("Bắt đầu quá trình căn chỉnh ảnh (phiên bản sửa lỗi cắt hình)...")
-    
-    # --- THAY ĐỔI QUAN TRỌNG ---
+    print("Bắt đầu quá trình căn chỉnh ảnh (phiên bản nâng cấp)...")
 
-    # 1. Chỉ tìm contour trên ảnh ĐẦU VÀO (ảnh bị méo)
+    # 1. Tìm contour 4 đỉnh của trang giấy trên ảnh ĐẦU VÀO
     input_page_contour = _find_page_contour(image_to_align)
 
     if input_page_contour is None:
         print("CẢNH BÁO: Không tìm thấy viền trang giấy trong ảnh đầu vào. Bỏ qua căn chỉnh.")
         return image_to_align
 
-    # Sắp xếp các điểm của contour đầu vào
+    # 2. Sắp xếp các điểm của contour đầu vào theo thứ tự chuẩn
     ordered_input_points = order_points(input_page_contour.reshape(4, 2))
-    
-    # 2. Xác định các điểm ĐÍCH một cách tĩnh từ kích thước của ảnh MẪU
-    # Đây là "khuôn" hoàn hảo mà chúng ta muốn nắn ảnh đầu vào theo.
+
+    # 3. Xác định các điểm ĐÍCH một cách tĩnh từ kích thước của ảnh MẪU (để không bị cắt hình)
     h, w = template_image.shape[:2]
-    # Các điểm đích là 4 góc của ảnh mẫu, đã được sắp xếp theo đúng thứ tự.
     ordered_template_points = np.array([
         [0, 0],         # Trên-trái
         [w - 1, 0],     # Trên-phải
         [w - 1, h - 1], # Dưới-phải
         [0, h - 1]      # Dưới-trái
     ], dtype="float32")
-    
-    # ----------------------------
 
-    # Tính toán ma trận biến đổi phối cảnh từ các điểm đầu vào đến các điểm đích
+    # 4. Tính toán ma trận biến đổi và áp dụng
     M = cv2.getPerspectiveTransform(ordered_input_points, ordered_template_points)
-    
-    # Áp dụng phép biến đổi. Kích thước đầu ra (w, h) giờ đây khớp chính xác với ảnh mẫu.
     aligned_image = cv2.warpPerspective(image_to_align, M, (w, h))
 
     print("Căn chỉnh ảnh hoàn tất.")
